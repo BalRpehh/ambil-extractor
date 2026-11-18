@@ -348,8 +348,18 @@ function formatSize(format) {
   return Number.isFinite(size) && size > 0 ? size : undefined
 }
 
+/**
+ * Hanya format yang bisa diunduh langsung. YouTube sering menawarkan varian
+ * HLS/DASH (protocol `m3u8`, `dash`, `http_dash_segments`) yang URL-nya berupa
+ * playlist, bukan berkas — ffmpeg tidak bisa memprosesnya dan pengunduhan gagal.
+ */
+function isDirectFormat(format) {
+  const protocol = String(format?.protocol || 'https').toLowerCase()
+  return protocol === 'https' || protocol === 'http'
+}
+
 function buildVariants(info, baseUrl) {
-  const formats = (info.formats || []).filter((f) => f && f.url)
+  const formats = (info.formats || []).filter((f) => f && f.url && isDirectFormat(f))
   const isVideo = (f) => typeof f.vcodec === 'string' && f.vcodec !== 'none'
   const isAudio = (f) => typeof f.acodec === 'string' && f.acodec !== 'none'
 
