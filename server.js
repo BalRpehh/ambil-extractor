@@ -250,6 +250,8 @@ function runYtdlp(url) {
     const isYouTube = /^https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(url)
     const playerClient = process.env.YTDLP_PLAYER_CLIENT || ''
     const potUrl = process.env.YTDLP_POT_URL || ''
+    const pluginDir = process.env.YTDLP_PLUGIN_DIR || ''
+    const jsRuntime = process.env.YTDLP_JS_RUNTIME || ''
     const args = [
       '--no-warnings',
       ...(process.env.YTDLP_VERBOSE === '1' ? ['--verbose'] : []),
@@ -264,6 +266,8 @@ function runYtdlp(url) {
       ...(isYouTube && playerClient
         ? ['--extractor-args', `youtube:player_client=${playerClient}`]
         : []),
+      ...(pluginDir ? ['--plugin-dirs', pluginDir] : []),
+      ...(jsRuntime ? ['--js-runtimes', jsRuntime] : []),
       ...(isYouTube && potUrl
         ? ['--extractor-args', `youtubepot-bgutilhttp:base_url=${potUrl}`]
         : []),
