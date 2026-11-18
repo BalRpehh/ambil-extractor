@@ -249,6 +249,7 @@ function runYtdlp(url) {
   return new Promise((resolve, reject) => {
     const isYouTube = /^https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(url)
     const playerClient = process.env.YTDLP_PLAYER_CLIENT || ''
+    const potUrl = process.env.YTDLP_POT_URL || ''
     const args = [
       '--no-warnings',
       '--no-progress',
@@ -261,6 +262,9 @@ function runYtdlp(url) {
       ...(COOKIES_PATH ? ['--cookies', COOKIES_PATH] : []),
       ...(isYouTube && playerClient
         ? ['--extractor-args', `youtube:player_client=${playerClient}`]
+        : []),
+      ...(isYouTube && potUrl
+        ? ['--extractor-args', `youtubepot-bgutilhttp:base_url=${potUrl}`]
         : []),
       '-J',
       url,
