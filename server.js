@@ -373,6 +373,15 @@ function isDirectFormat(format) {
 }
 
 function buildVariants(info, baseUrl) {
+  if (process.env.DEBUG_FORMATS === '1') {
+    log(
+      'formats',
+      (info.formats || [])
+        .map((f) => `${f.format_id}:${f.protocol}:${f.height || '-'}:${f.ext}:${Math.round(f.tbr || 0)}`)
+        .join(' | ')
+        .slice(0, 4000),
+    )
+  }
   const formats = (info.formats || []).filter((f) => f && f.url && isDirectFormat(f))
   const isVideo = (f) => typeof f.vcodec === 'string' && f.vcodec !== 'none'
   const isAudio = (f) => typeof f.acodec === 'string' && f.acodec !== 'none'
