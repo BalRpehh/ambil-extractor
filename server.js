@@ -252,6 +252,7 @@ function runYtdlp(url) {
     const potUrl = process.env.YTDLP_POT_URL || ''
     const args = [
       '--no-warnings',
+      ...(process.env.YTDLP_VERBOSE === '1' ? ['--verbose'] : []),
       '--no-progress',
       '--socket-timeout',
       '20',
