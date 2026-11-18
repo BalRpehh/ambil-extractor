@@ -1,13 +1,14 @@
-# Ekstraktor Ambil untuk Render (free instance).
-# Render menyuntikkan PORT sendiri; default 10000.
+# Ekstraktor Ambil — image Docker untuk hosting gratis (Back4App / Render).
+# Back4App menyuntikkan PORT sendiri (default 3000); Render memakai 10000.
 FROM node:22-slim
 
-ENV PORT=10000 \
+ENV PORT=3000 \
     HOST=0.0.0.0 \
     NODE_ENV=production \
     HOME=/tmp \
     YTDLP_PATH=/usr/local/bin/yt-dlp \
-    FFMPEG_PATH=/usr/bin/ffmpeg
+    FFMPEG_PATH=/usr/bin/ffmpeg \
+    NODE_OPTIONS=--max-old-space-size=128
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ffmpeg ca-certificates curl libatomic1 \
@@ -21,6 +22,6 @@ WORKDIR /app
 
 COPY package.json server.js ./
 
-EXPOSE 10000
+EXPOSE 3000
 
 CMD ["node", "server.js"]

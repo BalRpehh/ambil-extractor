@@ -186,7 +186,10 @@ function rateLimited(key, limit = 40, windowMs = 60_000) {
 function baseUrlFor(req) {
   if (publicBase) return publicBase
   const host = req.headers['x-forwarded-host'] || req.headers.host || `127.0.0.1:${PORT}`
-  const proto = req.headers['x-forwarded-proto'] || 'http'
+  // Proxy platform (Back4App, Render) kadang tidak meneruskan x-forwarded-proto.
+  // Tanpa ini tautan media jadi http:// dan diblokir browser sebagai mixed content.
+  const isLocal = /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(String(host))
+  const proto = req.headers['x-forwarded-proto'] || (isLocal ? 'http' : 'https')
   return `${proto}://${host}`.replace(/\/+$/, '')
 }
 
