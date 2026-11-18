@@ -247,6 +247,8 @@ process.on('SIGTERM', () => process.exit(0))
 
 function runYtdlp(url) {
   return new Promise((resolve, reject) => {
+    const isYouTube = /^https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(url)
+    const playerClient = process.env.YTDLP_PLAYER_CLIENT || ''
     const args = [
       '--no-warnings',
       '--no-progress',
@@ -257,6 +259,9 @@ function runYtdlp(url) {
       '--extractor-retries',
       '2',
       ...(COOKIES_PATH ? ['--cookies', COOKIES_PATH] : []),
+      ...(isYouTube && playerClient
+        ? ['--extractor-args', `youtube:player_client=${playerClient}`]
+        : []),
       '-J',
       url,
     ]
