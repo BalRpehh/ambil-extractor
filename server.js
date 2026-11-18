@@ -312,7 +312,7 @@ function runYtdlp(url) {
       clearTimeout(timer)
 
       if (code !== 0) {
-        const message = stderr.trim().split('\n').pop() || `yt-dlp keluar dengan kode ${code}`
+        const message = stderr.trim().split('\n').slice(-25).join(' | ') || `yt-dlp keluar dengan kode ${code}`
         reject(new Error(message))
         return
       }
