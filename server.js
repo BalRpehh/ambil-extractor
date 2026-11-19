@@ -245,6 +245,15 @@ process.on('exit', stopTunnel)
 process.on('SIGINT', () => process.exit(0))
 process.on('SIGTERM', () => process.exit(0))
 
+// Jangan biarkan satu request bermasalah mematikan seluruh container:
+// kesalahan tak tertangani dicatat, proses tetap hidup untuk request lain.
+process.on('uncaughtException', (error) => {
+  log('uncaught', error instanceof Error ? error.stack || error.message : String(error))
+})
+process.on('unhandledRejection', (error) => {
+  log('unhandled', error instanceof Error ? error.stack || error.message : String(error))
+})
+
 function runYtdlp(url) {
   return new Promise((resolve, reject) => {
     const isYouTube = /^https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(url)
@@ -740,7 +749,7 @@ async function pipeSingleMedia(entry, req, res) {
 function audioToMp3Args(item) {
   const args = ['-hide_banner', '-loglevel', 'error', '-nostdin']
 
-  if (item.headers.user-agent) args.push('-user_agent', item.headers.user-agent)
+  if (item.headers['user-agent']) args.push('-user_agent', item.headers['user-agent'])
   if (item.headers.referer) args.push('-headers', `Referer: ${item.headers.referer}\r\n`)
 
   args.push(
