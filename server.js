@@ -496,6 +496,39 @@ function buildVariants(info, baseUrl) {
       size: formatSize(audio),
       direct: true,
     })
+
+    if (HAS_FFMPEG) {
+      const mp3Name = `${title} - audio.mp3`
+      variants.push({
+        kind: 'audio',
+        label: 'MP3 320 kbps',
+        quality: '320 kbps',
+        container: 'mp3',
+        filename: mp3Name,
+        url: addToken(
+          { transcode: { url: audio.url, headers: formatHeaders(audio) } },
+          mp3Name,
+          'mp3',
+        ),
+        direct: true,
+      })
+    }
+  }
+
+  // Subtitle manual lebih diutamakan daripada subtitle otomatis.
+  for (const { lang, track, automatic } of pickSubtitles(info)) {
+    const ext = String(track.ext || 'vtt').toLowerCase()
+    const container = ext === 'srt' ? 'srt' : 'vtt'
+    const filename = `${title} - ${lang}${automatic ? ' (auto)' : ''}.${container}`
+    variants.push({
+      kind: 'subtitle',
+      label: `Subtitle ${lang.toUpperCase()}${automatic ? ' (otomatis)' : ''}`,
+      quality: lang,
+      container,
+      filename,
+      url: addToken({ single: { url: track.url, headers: {} } }, filename, container),
+      direct: true,
+    })
   }
 
   // Carousel foto (mis. Instagram) dari playlist yt-dlp.
@@ -527,6 +560,36 @@ function pickThumbnail(info) {
   const thumbs = Array.isArray(info.thumbnails) ? info.thumbnails : []
   const last = thumbs[thumbs.length - 1]
   return last?.url
+}
+
+const SUBTITLE_LANGS = ['id', 'en']
+const SUBTITLE_EXT = new Set(['vtt', 'srt'])
+
+/** Ambil subtitle Indonesia/Inggris (manual dulu, lalu otomatis). */
+function pickSubtitles(info) {
+  const picked = []
+  const groups = [
+    { tracks: info.subtitles, automatic: false },
+    { tracks: info.automatic_captions, automatic: true },
+  ]
+
+  for (const group of groups) {
+    if (!group.tracks || typeof group.tracks !== 'object') continue
+
+    for (const lang of SUBTITLE_LANGS) {
+      if (picked.some((item) => item.lang === lang)) continue
+      const list = group.tracks[lang]
+      if (!Array.isArray(list)) continue
+
+      const track = list.find(
+        (item) => item && item.url && SUBTITLE_EXT.has(String(item.ext || '').toLowerCase()),
+      )
+
+      if (track) picked.push({ lang, track, automatic: group.automatic })
+    }
+  }
+
+  return picked
 }
 
 function clientIp(req) {
@@ -674,8 +737,32 @@ async function pipeSingleMedia(entry, req, res) {
     .pipe(res)
 }
 
-function pipeMuxedMedia(entry, res) {
-  const args = ffmpegArgs(entry.video, entry.audio, entry.container)
+function audioToMp3Args(item) {
+  const args = ['-hide_banner', '-loglevel', 'error', '-nostdin']
+
+  if (item.headers.user-agent) args.push('-user_agent', item.headers.user-agent)
+  if (item.headers.referer) args.push('-headers', `Referer: ${item.headers.referer}\r\n`)
+
+  args.push(
+    '-i',
+    item.url,
+    '-vn',
+    '-map',
+    '0:a:0',
+    '-c:a',
+    'libmp3lame',
+    '-b:a',
+    '320k',
+    '-f',
+    'mp3',
+    'pipe:1',
+  )
+
+  return args
+}
+
+function pipeFfmpegMedia(entry, res, ffmpegArgList = null, forcedContentType = null) {
+  const args = ffmpegArgList || ffmpegArgs(entry.video, entry.audio, entry.container)
   const child = spawn(FFMPEG, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
 
   let stderr = ''
@@ -714,7 +801,7 @@ function pipeMuxedMedia(entry, res) {
     clearTimeout(idleTimer)
     started = true
     res.writeHead(200, {
-      'content-type': entry.container === 'mkv' ? 'video/x-matroska' : 'video/mp4',
+      'content-type': forcedContentType || (entry.container === 'mkv' ? 'video/x-matroska' : 'video/mp4'),
       'content-disposition': contentDisposition(entry.filename),
       'cache-control': 'private, no-store, max-age=0',
       'x-content-type-options': 'nosniff',
@@ -761,8 +848,12 @@ function handleMedia(req, res, id) {
     void pipeSingleMedia(entry, req, res)
     return
   }
+  if (entry.transcode && HAS_FFMPEG) {
+    pipeFfmpegMedia(entry, res, audioToMp3Args(entry.transcode), 'audio/mpeg')
+    return
+  }
   if (entry.video && entry.audio && HAS_FFMPEG) {
-    pipeMuxedMedia(entry, res)
+    pipeFfmpegMedia(entry, res)
     return
   }
 
